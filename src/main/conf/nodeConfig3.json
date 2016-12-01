@@ -1,0 +1,4 @@
+{
+	"node.name" : "node-three",
+	"http.port" : 8080
+}

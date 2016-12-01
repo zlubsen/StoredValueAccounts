@@ -1,0 +1,4 @@
+{
+	"node.name" : "node-one",
+	"http.port" : 8080
+}
