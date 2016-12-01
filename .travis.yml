@@ -1,0 +1,17 @@
+language: java
+jdk:
+- oraclejdk8
+before_install:
+- mvn clean
+after_success:
+- mvn test jacoco:report coveralls:report
+deploy:
+  skip_cleanup: true
+  provider: heroku
+  api_key:
+    secure: @@
+  app:
+    #acceptance: book2-app-acceptance 
+    #master: book2-app
+  on:
+    repo: zlubsen/StoredValueAccounts
