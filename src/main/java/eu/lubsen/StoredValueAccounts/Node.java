@@ -1,6 +1,8 @@
 package eu.lubsen.StoredValueAccounts;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -19,19 +21,26 @@ public class Node extends AbstractVerticle {
 	private String nodeName;
 
 	@Override
-	public void start() {
+	public void start(Future<Void> fut) {
 		this.nodeName = config().getString("node.name","defaultNode");
 		setupManagers();
-		setupRoutes();
+		
+		Router router = Router.router(vertx);
+		setupRoutes(router, fut);
+		vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port", 8080), result -> {
+	          if (result.succeeded()) {
+	              fut.complete();
+	            } else {
+	              fut.fail(result.cause());
+	            }
+	          });
 	}
 
 	private void setupManagers() {
 		this.controller = new Controller();
 	}
 
-	private void setupRoutes() {
-		Router router = Router.router(vertx);
-
+	private void setupRoutes(Router router, Future<Void> fut) {
 		router.route().handler(BodyHandler.create());
 
 		router.post("/account").handler(this::handleAddAccount);
@@ -44,8 +53,6 @@ public class Node extends AbstractVerticle {
 		router.get("/accounts").handler(this::handleListAccounts);
 		router.get("/transfers").handler(this::handleListTransfers);
 		router.get("/transactions").handler(this::handleListTransactions);
-
-		vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port", 8080));
 	}
 
 	// The create account method must return immediately (i.e. within 25ms) ,
