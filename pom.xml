@@ -44,6 +44,7 @@
 			<artifactId>vertx-hazelcast</artifactId>
 			<version>3.3.3</version>
 		</dependency>
+
 		<dependency>
 			<groupId>ant</groupId>
 			<artifactId>ant-apache-log4j</artifactId>
@@ -106,6 +107,14 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.7.7.201606060606</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.eluder.coveralls</groupId>
@@ -114,15 +123,6 @@
 				<configuration>
 				</configuration>
 			</plugin>
-			<!-- <plugin> <groupId>com.spotify</groupId> <artifactId>docker-maven-plugin</artifactId> 
-				<version>0.4.13</version> <executions> <execution> <id>build-image</id> <phase>package</phase> 
-				<goals> <goal>build</goal> </goals> </execution> </executions> <configuration> 
-				<dockerDirectory>${project.basedir}/src/main/docker</dockerDirectory> <imageName>lubsen/StoredValueAccounts</imageName> 
-				<resources> <resource> <targetPath>/verticles</targetPath> <directory>${project.build.directory}</directory> 
-				<includes> <include>${project.artifactId}-${project.version}.jar</include> 
-				</includes> </resource> -->
-			<!-- don't forget to also add all the dependencies required by your application -->
-			<!-- </resources> </configuration> </plugin> -->
 		</plugins>
 	</build>
 </project>
