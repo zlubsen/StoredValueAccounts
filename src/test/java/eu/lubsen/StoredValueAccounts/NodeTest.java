@@ -54,7 +54,7 @@ public class NodeTest {
 		final Async async = context.async();
 		String route = "/account";
 
-		String overdraftValue = "50";
+		int overdraftValue = 50;
 		JsonObject requestBody = new JsonObject().put("overdraft", overdraftValue);
 
 		vertx.createHttpClient().post(port, host, route, response -> {

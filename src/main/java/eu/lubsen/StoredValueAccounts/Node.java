@@ -2,7 +2,6 @@ package eu.lubsen.StoredValueAccounts;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -19,21 +18,24 @@ public class Node extends AbstractVerticle {
 
 	private Controller controller;
 	private String nodeName;
+	private boolean statusRunning = false;
 
 	@Override
 	public void start(Future<Void> fut) {
-		this.nodeName = config().getString("node.name","defaultNode");
+		this.nodeName = config().getString("node.name", "defaultNode");
 		setupManagers();
-		
+
 		Router router = Router.router(vertx);
 		setupRoutes(router, fut);
-		vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port", 8080), result -> {
-	          if (result.succeeded()) {
-	              fut.complete();
-	            } else {
-	              fut.fail(result.cause());
-	            }
-	          });
+		vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port", 8080),
+				result -> {
+					if (result.succeeded()) {
+						fut.complete();
+						statusRunning = true;
+					} else {
+						fut.fail(result.cause());
+					}
+				});
 	}
 
 	private void setupManagers() {
@@ -53,6 +55,8 @@ public class Node extends AbstractVerticle {
 		router.get("/accounts").handler(this::handleListAccounts);
 		router.get("/transfers").handler(this::handleListTransfers);
 		router.get("/transactions").handler(this::handleListTransactions);
+
+		router.get("/health").handler(this::handleHealth);
 	}
 
 	// The create account method must return immediately (i.e. within 25ms) ,
@@ -70,7 +74,12 @@ public class Node extends AbstractVerticle {
 
 		String accountId = controller.createUUID();
 
-		int overdraft = getOverdraftValue(routingContext.getBodyAsJson().getString("overdraft"));
+		int overdraft = 0;
+		JsonObject body = routingContext.getBodyAsJson();
+
+		if (body.containsKey("overdraft")) {
+			overdraft = validateOverdraftValue(body.getInteger("overdraft"));
+		}
 
 		controller.addAccount(new Account(accountId, overdraft));
 
@@ -78,9 +87,9 @@ public class Node extends AbstractVerticle {
 				.putHeader("Location", routingContext.request().host() + "/account/" + accountId).end();
 	}
 
-	private int getOverdraftValue(String overdraftInput) {
-		if (StringUtils.isNumeric(overdraftInput)) {
-			return Integer.valueOf(overdraftInput).intValue();
+	private int validateOverdraftValue(int overdraftInput) {
+		if (overdraftInput > 0) {
+			return overdraftInput;
 		}
 		return 0;
 	}
@@ -122,7 +131,7 @@ public class Node extends AbstractVerticle {
 		JsonObject requestBody = routingContext.getBodyAsJson();
 		String from = requestBody.getString("from");
 		String to = requestBody.getString("to");
-		int amount = validateAmount(requestBody.getString("amount"));
+		int amount = requestBody.getInteger("amount").intValue();
 
 		if (amount > 0) {
 			String transferId = controller.createUUID();
@@ -134,15 +143,6 @@ public class Node extends AbstractVerticle {
 		} else
 			routingContext.response().setStatusCode(400)
 					.end("{\"error\":\"Amount to be transfered must be a positve integer (>0).\"}");
-
-		// TODO process the transfer
-	}
-
-	private int validateAmount(String amount) {
-		if (StringUtils.isNumeric(amount)) {
-			return Integer.valueOf(amount).intValue();
-		}
-		return -1;
 	}
 
 	// All transfers, successful or failed, can be inspected using: GET
@@ -213,5 +213,12 @@ public class Node extends AbstractVerticle {
 	private void handleListTransactions(RoutingContext routingContext) {
 		routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
 				.end(controller.listTransactionsJson());
+	}
+
+	private void handleHealth(RoutingContext routingContext) {
+		if(statusRunning)
+			routingContext.response().setStatusCode(200).end();
+		else
+			routingContext.response().setStatusCode(503).end();
 	}
 }

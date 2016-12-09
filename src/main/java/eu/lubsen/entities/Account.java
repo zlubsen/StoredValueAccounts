@@ -5,7 +5,7 @@ import io.vertx.core.json.JsonObject;
 public class Account {
 	private String id;
 	private int balance;
-	private int overdraft;
+	private int overdraft = 0;
 
 	public Account(String id, int overdraft) {
 		this.id = id;
