@@ -10,12 +10,12 @@ jdk:
 
 before_install:
 - mvn clean
-- docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-- docker build -t zlubsen/sva .
-- docker push zlubsen/sva
 
 after_success:
 - mvn test jacoco:report coveralls:report
+- docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+- docker build -t zlubsen/sva .
+- docker push zlubsen/sva
 
 #deploy:
 #  skip_cleanup: true
