@@ -1,4 +1,5 @@
 {
 	"node.name" : "node-three",
-	"http.port" : 8080
+	"http.port" : 8082,
+	"cluster.name" : "sva-cluster"
 }
