@@ -17,6 +17,11 @@ public class Controller {
 		this.accounts = new HashMap<>();
 		this.transfers = new HashMap<>();
 	}
+	
+	public Controller(Map<String,Account> replicatedAccountsMap, Map<String,Transfer> replicatedTransfersMap) {
+		this.accounts = replicatedAccountsMap;
+		this.transfers = replicatedTransfersMap;
+	}
 
 	public String createUUID() {
 		return UUID.randomUUID().toString();
