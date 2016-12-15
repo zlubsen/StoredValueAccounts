@@ -17,7 +17,7 @@ import eu.lubsen.entities.Account;
 import eu.lubsen.entities.Transfer;
 import eu.lubsen.entities.TransferStatus;
 
-public class Node extends AbstractVerticle {
+public class NodeVerticle extends AbstractVerticle {
 
 	private HazelcastInstance hz;
 	private Controller controller;
@@ -27,7 +27,9 @@ public class Node extends AbstractVerticle {
 	@Override
 	public void start(Future<Void> fut) {
 		this.nodeName = config().getString("node.name", "defaultNode");
-		setupCluster();
+
+		this.hz = Hazelcast.getHazelcastInstanceByName(config().getString("node.name","sva-cluster"));
+		// setupCluster();
 		setupManagers();
 
 		Router router = Router.router(vertx);
@@ -40,20 +42,23 @@ public class Node extends AbstractVerticle {
 						fut.fail(result.cause());
 					}
 				});
+
+		statusRunning = true;
 	}
-	
+
 	private void setupCluster() {
 		vertx.executeBlocking(future -> {
-			HazelcastInstance instance = Hazelcast.newHazelcastInstance();
+			HazelcastInstance instance = Hazelcast.getHazelcastInstanceByName(config().getString("node.name"));
 			future.complete(instance);
 		}, res -> {
 			hz = (HazelcastInstance) res.result();
+			System.out.println(hz.toString());
 			statusRunning = true;
 		});
 	}
 
 	private void setupManagers() {
-		this.controller = new Controller();
+		this.controller = new Controller(hz.getReplicatedMap("accounts"), hz.getReplicatedMap("transfers"));
 	}
 
 	private void setupRoutes(Router router) {
@@ -234,7 +239,7 @@ public class Node extends AbstractVerticle {
 		status.put("nodeName", this.nodeName);
 		status.put("hz-instance", this.hz.toString());
 		HttpServerResponse response = routingContext.response();
-		if(statusRunning)
+		if (statusRunning)
 			response.setStatusCode(200).end(status.encodePrettily());
 		else
 			response.setStatusCode(503).end("Node not available, cluster not running (yet).");
