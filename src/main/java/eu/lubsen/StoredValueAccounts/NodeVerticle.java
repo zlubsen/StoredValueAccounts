@@ -10,12 +10,16 @@ import io.vertx.ext.web.handler.BodyHandler;
 
 import org.apache.commons.lang3.StringUtils;
 
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
+
 import eu.lubsen.entities.Account;
 import eu.lubsen.entities.Transfer;
 import eu.lubsen.entities.TransferStatus;
 
-public class Node extends AbstractVerticle {
+public class NodeVerticle extends AbstractVerticle {
 
+	private HazelcastInstance hz;
 	private Controller controller;
 	private String nodeName;
 	private boolean statusRunning = false;
@@ -23,26 +27,30 @@ public class Node extends AbstractVerticle {
 	@Override
 	public void start(Future<Void> fut) {
 		this.nodeName = config().getString("node.name", "defaultNode");
+
+		this.hz = Hazelcast.getHazelcastInstanceByName(config().getString("cluster.name","sva-cluster"));
+		// setupCluster();
 		setupManagers();
 
 		Router router = Router.router(vertx);
-		setupRoutes(router, fut);
+		setupRoutes(router);
 		vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port", 8080),
 				result -> {
 					if (result.succeeded()) {
 						fut.complete();
-						statusRunning = true;
 					} else {
 						fut.fail(result.cause());
 					}
 				});
+
+		statusRunning = true;
 	}
 
 	private void setupManagers() {
-		this.controller = new Controller();
+		this.controller = new Controller(hz.getReplicatedMap("accounts"), hz.getReplicatedMap("transfers"));
 	}
 
-	private void setupRoutes(Router router, Future<Void> fut) {
+	private void setupRoutes(Router router) {
 		router.route().handler(BodyHandler.create());
 
 		router.post("/account").handler(this::handleAddAccount);
@@ -216,9 +224,13 @@ public class Node extends AbstractVerticle {
 	}
 
 	private void handleHealth(RoutingContext routingContext) {
-		if(statusRunning)
-			routingContext.response().setStatusCode(200).end();
+		JsonObject status = new JsonObject();
+		status.put("nodeName", this.nodeName);
+		status.put("clusterInstance", this.hz.toString());
+		HttpServerResponse response = routingContext.response();
+		if (statusRunning)
+			response.setStatusCode(200).end(status.encodePrettily());
 		else
-			routingContext.response().setStatusCode(503).end();
+			response.setStatusCode(503).end("Node not available, cluster not running (yet).");
 	}
 }
