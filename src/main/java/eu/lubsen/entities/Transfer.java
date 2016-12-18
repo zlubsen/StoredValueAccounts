@@ -1,8 +1,12 @@
 package eu.lubsen.entities;
 
+import java.io.Serializable;
+
 import io.vertx.core.json.JsonObject;
 
-public class Transfer {
+public class Transfer implements Serializable {
+	private static final long serialVersionUID = 1L;
+	
 	private String id;
 	private String fromAccount;
 	private String toAccount;
