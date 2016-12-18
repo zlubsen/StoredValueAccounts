@@ -28,7 +28,7 @@ public class NodeVerticle extends AbstractVerticle {
 	public void start(Future<Void> fut) {
 		this.nodeName = config().getString("node.name", "defaultNode");
 
-		this.hz = Hazelcast.getHazelcastInstanceByName(config().getString("node.name","sva-cluster"));
+		this.hz = Hazelcast.getHazelcastInstanceByName(config().getString("cluster.name","sva-cluster"));
 		// setupCluster();
 		setupManagers();
 
@@ -44,17 +44,6 @@ public class NodeVerticle extends AbstractVerticle {
 				});
 
 		statusRunning = true;
-	}
-
-	private void setupCluster() {
-		vertx.executeBlocking(future -> {
-			HazelcastInstance instance = Hazelcast.getHazelcastInstanceByName(config().getString("node.name"));
-			future.complete(instance);
-		}, res -> {
-			hz = (HazelcastInstance) res.result();
-			System.out.println(hz.toString());
-			statusRunning = true;
-		});
 	}
 
 	private void setupManagers() {
@@ -237,7 +226,7 @@ public class NodeVerticle extends AbstractVerticle {
 	private void handleHealth(RoutingContext routingContext) {
 		JsonObject status = new JsonObject();
 		status.put("nodeName", this.nodeName);
-		status.put("hz-instance", this.hz.toString());
+		status.put("clusterInstance", this.hz.toString());
 		HttpServerResponse response = routingContext.response();
 		if (statusRunning)
 			response.setStatusCode(200).end(status.encodePrettily());

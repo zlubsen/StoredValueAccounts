@@ -80,18 +80,26 @@ public class Controller {
 
 	public void processTransfer(String transferId) {
 		Transfer transfer = transfers.get(transferId);
-		String from = transfer.getFromAccount();
-		String to = transfer.getToAccount();
 
-		if (accounts.containsKey(from) && accounts.containsKey(to)) {
-			if (accounts.get(from).approveDeduction(transfer.getAmount())) {
-				accounts.get(from).deductAmount(transfer.getAmount());
-				accounts.get(to).addAmount(transfer.getAmount());
-				transfer.setStatus(TransferStatus.CONFIRMED);
-			} else
-				transfer.setStatus(TransferStatus.INSUFFICIENT_FUNDS);
+		if (accounts.containsKey(transfer.getFromAccount()) && accounts.containsKey(transfer.getToAccount())) {
+			executeTransfer(transfer);
 		} else {
 			transfer.setStatus(TransferStatus.ACCOUNT_NOT_FOUND);
 		}
+		transfers.replace(transfer.getId(), transfer); // trigger replication
+	}
+	
+	private void executeTransfer(Transfer transfer) {
+		Account from = accounts.get(transfer.getFromAccount());
+		Account to = accounts.get(transfer.getToAccount());
+		if (from.approveDeduction(transfer.getAmount())) {
+			from.deductAmount(transfer.getAmount());
+			to.addAmount(transfer.getAmount());
+			transfer.setStatus(TransferStatus.CONFIRMED);
+			
+			accounts.replace(from.getId(), from); // trigger replication
+			accounts.replace(to.getId(), to); // trigger replication
+		} else
+			transfer.setStatus(TransferStatus.INSUFFICIENT_FUNDS);
 	}
 }
