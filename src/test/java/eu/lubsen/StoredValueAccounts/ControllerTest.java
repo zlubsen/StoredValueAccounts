@@ -5,9 +5,9 @@ import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import eu.lubsen.entities.Account;
-import eu.lubsen.entities.Transfer;
-import eu.lubsen.entities.TransferStatus;
+import eu.lubsen.StoredValueAccounts.entities.Account;
+import eu.lubsen.StoredValueAccounts.entities.Transfer;
+import eu.lubsen.StoredValueAccounts.entities.TransferStatus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;

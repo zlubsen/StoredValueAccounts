@@ -1,4 +1,4 @@
-package eu.lubsen.entities;
+package eu.lubsen.StoredValueAccounts.entities;
 
 public enum TransferStatus {
 	PENDING,

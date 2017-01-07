@@ -1,4 +1,4 @@
-package eu.lubsen.entities;
+package eu.lubsen.StoredValueAccounts.entities;
 
 import java.io.Serializable;
 

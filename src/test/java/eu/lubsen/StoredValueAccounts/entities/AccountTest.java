@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import eu.lubsen.entities.Account;
+import eu.lubsen.StoredValueAccounts.entities.Account;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 

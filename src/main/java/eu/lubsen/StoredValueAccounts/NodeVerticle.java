@@ -13,9 +13,9 @@ import org.apache.commons.lang3.StringUtils;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 
-import eu.lubsen.entities.Account;
-import eu.lubsen.entities.Transfer;
-import eu.lubsen.entities.TransferStatus;
+import eu.lubsen.StoredValueAccounts.entities.Account;
+import eu.lubsen.StoredValueAccounts.entities.Transfer;
+import eu.lubsen.StoredValueAccounts.entities.TransferStatus;
 
 public class NodeVerticle extends AbstractVerticle {
 
