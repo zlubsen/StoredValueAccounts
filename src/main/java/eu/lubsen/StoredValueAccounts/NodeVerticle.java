@@ -7,6 +7,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.redis.RedisOptions;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -28,9 +29,8 @@ public class NodeVerticle extends AbstractVerticle {
 	public void start(Future<Void> fut) {
 		this.nodeName = config().getString("node.name", "defaultNode");
 
-		this.hz = Hazelcast.getHazelcastInstanceByName(config().getString("cluster.name","sva-cluster"));
-		// setupCluster();
-		setupManagers();
+		this.hz = Hazelcast.getHazelcastInstanceByName(config().getString("cluster.name", "sva-cluster"));
+		setupController();
 
 		Router router = Router.router(vertx);
 		setupRoutes(router);
@@ -46,8 +46,10 @@ public class NodeVerticle extends AbstractVerticle {
 		statusRunning = true;
 	}
 
-	private void setupManagers() {
-		this.controller = new Controller(hz.getReplicatedMap("accounts"), hz.getReplicatedMap("transfers"));
+	private void setupController() {
+		// this.controller = new Controller(hz.getReplicatedMap("accounts"),
+		// hz.getReplicatedMap("transfers"));
+		this.controller = new Controller(vertx, new RedisOptions());
 	}
 
 	private void setupRoutes(Router router) {
@@ -89,10 +91,15 @@ public class NodeVerticle extends AbstractVerticle {
 			overdraft = validateOverdraftValue(body.getInteger("overdraft"));
 		}
 
-		controller.addAccount(new Account(accountId, overdraft));
-
 		routingContext.response().setStatusCode(202)
 				.putHeader("Location", routingContext.request().host() + "/account/" + accountId).end();
+
+		controller.addAccount(new Account(accountId, overdraft)).setHandler(res -> {
+			if (res.failed()) {
+				System.out.println("Adding an account failed: " + res.cause());
+				// TODO: better error handling when db is not available
+			}
+		});
 	}
 
 	private int validateOverdraftValue(int overdraftInput) {
@@ -111,16 +118,16 @@ public class NodeVerticle extends AbstractVerticle {
 		if (accountId == null) {
 			response.setStatusCode(400).end();
 		} else {
-			if (controller.accountExists(accountId)) {
-				JsonObject account = controller.getAccount(accountId).toJson();
-				if (account == null) {
-					response.setStatusCode(404).end();
-				} else {
+			controller.getAccount(accountId).setHandler(res -> {
+				if (res.succeeded()) {
+					JsonObject account = res.result().toJson();
+
 					response.putHeader("content-type", "application/json").setStatusCode(200)
 							.end(account.encodePrettily());
+				} else {
+					response.setStatusCode(404).end();
 				}
-			} else
-				response.setStatusCode(404).end();
+			});
 		}
 	}
 
@@ -143,11 +150,15 @@ public class NodeVerticle extends AbstractVerticle {
 
 		if (amount > 0) {
 			String transferId = controller.createUUID();
-			controller.addTransfer(new Transfer(transferId, from, to, amount));
+			controller.addTransfer(new Transfer(transferId, from, to, amount)).setHandler(res -> {
+				if (res.succeeded()) {
+					routingContext.response().setStatusCode(202)
+							.putHeader("Location", routingContext.request().host() + "/transfer/" + transferId).end();
 
-			routingContext.response().setStatusCode(202)
-					.putHeader("Location", routingContext.request().host() + "/transfer/" + transferId).end();
-			controller.processTransfer(transferId);
+					controller.processTransfer(transferId);
+				} else
+					routingContext.response().setStatusCode(503).end(res.cause().getMessage());
+			});
 		} else
 			routingContext.response().setStatusCode(400)
 					.end("{\"error\":\"Amount to be transfered must be a positve integer (>0).\"}");
@@ -168,12 +179,15 @@ public class NodeVerticle extends AbstractVerticle {
 		if (StringUtils.isBlank(transactionId)) {
 			routingContext.response().setStatusCode(400).end();
 		} else {
-			if (controller.transferExists(transactionId)) {
-				JsonObject transfer = controller.getTransfer(transactionId).toJson();
-				routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
-						.end(transfer.encodePrettily());
-			} else
-				routingContext.response().setStatusCode(404).end();
+			controller.getTransfer(transactionId).setHandler(res -> {
+				if (res.succeeded()) {
+					JsonObject transfer = res.result().toJson();
+					routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
+							.end(transfer.encodePrettily());
+				} else {
+					routingContext.response().setStatusCode(404).end();
+				}
+			});
 		}
 	}
 
@@ -195,42 +209,66 @@ public class NodeVerticle extends AbstractVerticle {
 		if (StringUtils.isBlank(transactionId)) {
 			routingContext.response().setStatusCode(400).end();
 		} else {
-			if (controller.transferExists(transactionId)) {
-				Transfer transfer = controller.getTransfer(transactionId);
-				if (transfer.getStatus() != TransferStatus.CONFIRMED) {
+			controller.getTransfer(transactionId).setHandler(res -> {
+				if (res.succeeded()) {
+					Transfer transfer = res.result();
+					if (transfer.getStatus() != TransferStatus.CONFIRMED) {
+						routingContext.response().setStatusCode(404).end();
+					} else
+						routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
+								.end(transfer.toJson().encodePrettily());
+				} else
 					routingContext.response().setStatusCode(404).end();
-				} else {
-					routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
-							.end(transfer.toJson().encodePrettily());
-				}
-			} else
-				routingContext.response().setStatusCode(404).end();
+			});
 		}
 	}
 
 	private void handleListAccounts(RoutingContext routingContext) {
-		routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
-				.end(controller.listAccountsJSON());
+		Future<String> fut = controller.listAccountsJson();
+		fut.setHandler(res -> {
+			if (res.succeeded()) {
+				routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
+						.end(res.result());
+			} else
+				routingContext.response().putHeader("content-type", "application/json").setStatusCode(503)
+						.end("{\"error\":\"Unable to fetch list of accounts - " + res.result() + "\"}");
+		});
+
 	}
 
 	private void handleListTransfers(RoutingContext routingContext) {
-		routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
-				.end(controller.listTransfersJson());
+		Future<String> fut = controller.listTransfersJson();
+		fut.setHandler(res -> {
+			if (res.succeeded()) {
+				routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
+						.end(res.result());
+			} else
+				routingContext.response().putHeader("content-type", "application/json").setStatusCode(503)
+						.end("{\"error\":\"Unable to fetch list of transfers - " + res.result() + "\"}");
+		});
 	}
 
 	private void handleListTransactions(RoutingContext routingContext) {
-		routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
-				.end(controller.listTransactionsJson());
+		Future<String> fut = controller.listTransactionsJson();
+		fut.setHandler(res -> {
+			if (res.succeeded()) {
+				routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
+						.end(res.result());
+			} else
+				routingContext.response().putHeader("content-type", "application/json").setStatusCode(503)
+						.end("{\"error\":\"Unable to fetch list of transactions - " + res.result() + "\"}");
+		});
 	}
 
 	private void handleHealth(RoutingContext routingContext) {
-		JsonObject status = new JsonObject();
-		status.put("nodeName", this.nodeName);
-		status.put("clusterInstance", this.hz.toString());
 		HttpServerResponse response = routingContext.response();
-		if (statusRunning)
+		if (statusRunning) {
+			JsonObject status = new JsonObject();
+			status.put("nodeName", this.nodeName);
+			status.put("clusterInstance", this.hz.toString());
 			response.setStatusCode(200).end(status.encodePrettily());
-		else
+		} else {
 			response.setStatusCode(503).end("Node not available, cluster not running (yet).");
+		}
 	}
 }
