@@ -4,7 +4,8 @@ language: java
 
 services:
   - docker
-  
+  - redis-server
+
 jdk:
 - oraclejdk8
 
@@ -14,7 +15,7 @@ before_install:
 after_success:
 - mvn test jacoco:report coveralls:report
 - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-- docker build -t zlubsen/sva .
+- docker build -t zlubsen/sva -f src/main/docker/Dockerfile .
 - docker push zlubsen/sva
 
 #deploy:
