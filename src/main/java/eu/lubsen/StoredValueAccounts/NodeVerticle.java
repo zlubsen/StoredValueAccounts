@@ -91,12 +91,10 @@ public class NodeVerticle extends AbstractVerticle {
 			overdraft = validateOverdraftValue(body.getInteger("overdraft"));
 		}
 
-		routingContext.response().setStatusCode(202)
-				.putHeader("Location", routingContext.request().host() + "/account/" + accountId).end();
+		routingContext.response().setStatusCode(202).putHeader("Location", "/account/" + accountId).end();
 
 		controller.addAccount(new Account(accountId, overdraft)).setHandler(res -> {
 			if (res.failed()) {
-				System.out.println("Adding an account failed: " + res.cause());
 				// TODO: better error handling when db is not available
 			}
 		});
@@ -119,9 +117,8 @@ public class NodeVerticle extends AbstractVerticle {
 			response.setStatusCode(400).end();
 		} else {
 			controller.getAccount(accountId).setHandler(res -> {
-				if (res.succeeded()) {
+				if (res.succeeded() && res.result() != null) {
 					JsonObject account = res.result().toJson();
-
 					response.putHeader("content-type", "application/json").setStatusCode(200)
 							.end(account.encodePrettily());
 				} else {
@@ -150,14 +147,12 @@ public class NodeVerticle extends AbstractVerticle {
 
 		if (amount > 0) {
 			String transferId = controller.createUUID();
-			controller.addTransfer(new Transfer(transferId, from, to, amount)).setHandler(res -> {
-				if (res.succeeded()) {
-					routingContext.response().setStatusCode(202)
-							.putHeader("Location", routingContext.request().host() + "/transfer/" + transferId).end();
 
+			routingContext.response().setStatusCode(202).putHeader("Location", "/transfer/" + transferId).end();
+
+			controller.addTransfer(new Transfer(transferId, from, to, amount)).setHandler(res -> {
+				if (res.succeeded())
 					controller.processTransfer(transferId);
-				} else
-					routingContext.response().setStatusCode(503).end(res.cause().getMessage());
 			});
 		} else
 			routingContext.response().setStatusCode(400)
@@ -180,13 +175,12 @@ public class NodeVerticle extends AbstractVerticle {
 			routingContext.response().setStatusCode(400).end();
 		} else {
 			controller.getTransfer(transactionId).setHandler(res -> {
-				if (res.succeeded()) {
+				if (res.succeeded() && res.result() != null) {
 					JsonObject transfer = res.result().toJson();
 					routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
 							.end(transfer.encodePrettily());
-				} else {
+				} else
 					routingContext.response().setStatusCode(404).end();
-				}
 			});
 		}
 	}
@@ -210,7 +204,7 @@ public class NodeVerticle extends AbstractVerticle {
 			routingContext.response().setStatusCode(400).end();
 		} else {
 			controller.getTransfer(transactionId).setHandler(res -> {
-				if (res.succeeded()) {
+				if (res.succeeded() && res.result() != null) {
 					Transfer transfer = res.result();
 					if (transfer.getStatus() != TransferStatus.CONFIRMED) {
 						routingContext.response().setStatusCode(404).end();
