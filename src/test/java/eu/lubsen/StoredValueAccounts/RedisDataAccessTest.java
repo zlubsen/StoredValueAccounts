@@ -14,7 +14,6 @@ import eu.lubsen.StoredValueAccounts.entities.TransferStatus;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -42,7 +41,7 @@ public class RedisDataAccessTest {
 		Controller controller = getController();
 		String id = UUID.randomUUID().toString();
 
-		Account account = new Account(new JsonObject().put("id", id).put("balance", 0).put("overdraft", 50));
+		Account account = new Account(id, 50);
 
 		Future<Void> futAdd = controller.addAccount(account);
 		futAdd.setHandler(context.asyncAssertSuccess());
@@ -54,7 +53,7 @@ public class RedisDataAccessTest {
 		Controller controller = getController();
 		String id = UUID.randomUUID().toString();
 
-		Account expected = new Account(new JsonObject().put("id", id).put("balance", 0).put("overdraft", 50));
+		Account expected = new Account(id, 50);
 
 		Future<Void> futAdd = controller.addAccount(expected);
 		futAdd.setHandler(resAdd -> {
@@ -96,7 +95,7 @@ public class RedisDataAccessTest {
 		Controller controller = getController();
 		String id = UUID.randomUUID().toString();
 
-		Account expected = new Account(new JsonObject().put("id", id).put("balance", 0).put("overdraft", 50));
+		Account expected = new Account(id, 50);
 
 		Future<Void> futAdd = controller.addAccount(expected);
 		futAdd.setHandler(resAdd -> {
