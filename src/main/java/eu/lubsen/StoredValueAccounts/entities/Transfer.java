@@ -7,14 +7,14 @@ import io.vertx.core.json.JsonObject;
 public class Transfer implements Serializable {
 	private static final long serialVersionUID = 1L;
 	
-	private String id;
+	private String transactionId;
 	private String fromAccount;
 	private String toAccount;
 	private int amount;
 	private TransferStatus status;
 
-	public Transfer(String id, String from, String to, int amount) {
-		this.id = id;
+	public Transfer(String transactionId, String from, String to, int amount) {
+		this.transactionId = transactionId;
 		this.fromAccount = from;
 		this.toAccount = to;
 		this.amount = amount;
@@ -22,7 +22,7 @@ public class Transfer implements Serializable {
 	}
 
 	public Transfer(JsonObject jsonTransfer) {
-		this.id = jsonTransfer.getString("id");
+		this.transactionId = jsonTransfer.getString("transactionId");
 		this.fromAccount = jsonTransfer.getString("from");
 		this.toAccount = jsonTransfer.getString("to");
 		this.amount = jsonTransfer.getInteger("amount").intValue();
@@ -30,12 +30,12 @@ public class Transfer implements Serializable {
 	}
 
 	public JsonObject toJson() {
-		return new JsonObject().put("id", this.id).put("from", this.fromAccount).put("to", this.toAccount)
+		return new JsonObject().put("transactionId", this.transactionId).put("from", this.fromAccount).put("to", this.toAccount)
 				.put("amount", this.amount).put("status", this.status);
 	}
 
 	public String getId() {
-		return this.id;
+		return this.transactionId;
 	}
 
 	public String getFromAccount() {
