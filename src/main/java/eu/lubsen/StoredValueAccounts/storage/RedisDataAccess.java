@@ -24,11 +24,10 @@ public class RedisDataAccess implements DataAccess {
 		Future<Boolean> result = Future.future();
 
 		redis.exists(ACCOUNT_LABEL + id, res -> {
-			if (res.succeeded()) {
-				if (res.result() > 0)
-					result.complete(true);
-				else
-					result.complete(false);
+			if (res.succeeded() && res.result() > 0) {
+				result.complete(true);
+			} else if (res.succeeded())
+				result.complete(false);
 			} else {
 				result.fail(res.cause());
 			}
