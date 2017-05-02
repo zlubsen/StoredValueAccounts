@@ -236,9 +236,7 @@ public class NodeVerticle extends AbstractVerticle {
 			if (res.succeeded()) {
 				routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
 						.end(res.result());
-			} else
-				routingContext.response().putHeader("content-type", "application/json").setStatusCode(503)
-						.end("{\"error\":\"Unable to fetch list of transfers - " + res.result() + "\"}");
+			}
 		});
 	}
 
@@ -246,7 +244,7 @@ public class NodeVerticle extends AbstractVerticle {
 		Future<String> fut = controller.listTransactionsJson();
 		fut.setHandler(res -> {
 			if (res.succeeded()) {
-				routingContext.response().putHeader("content-type", "application/json").setStatusCode(200)
+				routingContext.response().setStatusCode(200)
 						.end(res.result());
 			} else
 				routingContext.response().putHeader("content-type", "application/json").setStatusCode(503)
